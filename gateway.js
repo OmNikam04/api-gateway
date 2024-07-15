@@ -3,6 +3,7 @@ const app = express()
 const registry = require("./routes/registry.json")
 const helmet = require('helmet')
 const routes = require("./routes")
+const rateLimiter = require('./rateLimiter.js');
 const PORT = 3000
 const morgan = require('morgan');
 
@@ -30,6 +31,7 @@ const auth = (req, res, next) => {
 
 
 app.use(auth)
+app.use(rateLimiter)
 app.use("/", routes)
 
 app.listen(PORT, ()=>{
