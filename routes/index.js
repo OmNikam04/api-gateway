@@ -7,13 +7,15 @@ const loadbalancer = require("../util/loadbalancer")
 const Joi = require('joi'); // validate incoming requests
 
 // Define the schema for Joi validation
+// Define the schema for Joi validation
 const registrationSchema = Joi.object({
     apiName: Joi.string().required(),
     protocol: Joi.string().valid('http', 'https').required(),
     host: Joi.string().hostname().required(),
     port: Joi.number().integer().min(1).max(65535).required(),
     weight: Joi.number().integer().min(1).default(1),  // Adding weight for weighted round robin
-    connections: Joi.number().integer().min(0).default(0)  // Initializing connections for load balancing
+    connections: Joi.number().integer().min(0).default(0),  // Initializing connections for load balancing
+    healthCheckPaths: Joi.array().items(Joi.string().required()).min(1).required() // Validate healthCheckPaths
 });
 
 // Enabling/Disabling api instances
@@ -44,35 +46,6 @@ router.post('/enable/:apiName', (req, res)=>{
     }
 })
 
-
-// router.post('/register', (req, res) => {
-//     console.log("Received registration request:", req.body);
-//     const registrationInfo = req.body;
-//     registrationInfo.url = `${registrationInfo.protocol}://${registrationInfo.host}:${registrationInfo.port}/`;
-
-//     if (apiAlreadyExists(registrationInfo)) {
-//         res.send(`Configuration already exists for '${registrationInfo.apiName}' at '${registrationInfo.url}'`);
-//     } else {
-//         if (!registry.services[registrationInfo.apiName]) {
-//             registry.services[registrationInfo.apiName] = {
-//                 loadBalanceStrategy: "ROUND_ROBIN",
-//                 index: 0,
-//                 instances: []
-//             };
-//         }
-//         registry.services[registrationInfo.apiName].instances.push({ ...registrationInfo });
-
-//         fs.writeFile('./routes/registry.json', JSON.stringify(registry, null, 2), (err) => {
-//             if (err) {
-//                 res.status(500).send(`Could not register ${registrationInfo.apiName}\n${err}`);
-//             } else {
-//                 res.send(`Successfully registered '${registrationInfo.apiName}'`);
-//             }
-//         });
-//     }
-// });
-// Register API
-
 // Register API
 router.post('/register', (req, res) => {
     console.log("Received registration request:", req.body);
@@ -86,7 +59,7 @@ router.post('/register', (req, res) => {
     registrationInfo.url = `${registrationInfo.protocol}://${registrationInfo.host}:${registrationInfo.port}/`;
 
     if (apiAlreadyExists(registrationInfo)) {
-        res.send(`Configuration already exists for '${registrationInfo.apiName}' at '${registrationInfo.url}'`);
+        return res.send(`Configuration already exists for '${registrationInfo.apiName}' at '${registrationInfo.url}'`);
     } else {
         if (!registry.services[registrationInfo.apiName]) {
             registry.services[registrationInfo.apiName] = {
@@ -99,9 +72,9 @@ router.post('/register', (req, res) => {
 
         fs.writeFile('./routes/registry.json', JSON.stringify(registry, null, 2), (err) => {
             if (err) {
-                res.status(500).send(`Could not register ${registrationInfo.apiName}\n${err}`);
+                return res.status(500).send(`Could not register ${registrationInfo.apiName}\n${err}`);
             } else {
-                res.send(`Successfully registered '${registrationInfo.apiName}'`);
+                return res.send(`Successfully registered '${registrationInfo.apiName}'`);
             }
         });
     }
@@ -154,26 +127,33 @@ const apiAlreadyExists = (registrationInfo)=>{
 
 
 // all means all http methods
-router.all("/:apiName/:path(*)?", (req, res) => {
-    console.log('Received parameters:', req.params);
+router.all("/:apiName/:path(*)?", async (req, res) => {
+    // console.log('Received parameters:', req.params);
     const service = registry.services[req.params.apiName];
     
-    // Improved logging to display the service object
-    console.log('Service object:', JSON.stringify(service, null, 2)); 
+    // console.log('Service object:', JSON.stringify(service, null, 2)); 
 
     if (service) {
-        const newIndex = loadbalancer[service.loadBalancerStrategy](service);
-        const url = service.instances[newIndex].url + (req.params.path ? req.params.path : "");
-        console.log(`Forwarding request to: ${url}`);
+        try {
+            const newIndex = await loadbalancer[service.loadBalancerStrategy](service);
+            console.log(`New Index: ${newIndex}`);
 
-        axios({
-            method: req.method,
-            url: url,
-            headers: req.headers,
-            data: req.body
-        }).then(response => {
+            if (newIndex === -1) {
+                return res.status(500).send('No enabled instances available');
+            }
+
+            const url = service.instances[newIndex].url + (req.params.path ? req.params.path : "");
+            console.log(`Forwarding request to: ${url}`);
+
+            const response = await axios({
+                method: req.method,
+                url: url,
+                headers: req.headers,
+                data: req.body
+            });
+
             res.send(response.data);
-        }).catch(err => {
+        } catch (err) {
             if (err.response) {
                 res.status(err.response.status).send(err.response.data);
             } else if (err.request) {
@@ -181,12 +161,10 @@ router.all("/:apiName/:path(*)?", (req, res) => {
             } else {
                 res.status(500).send('Internal server error');
             }
-        });
+        }
     } else {
         res.status(404).send('API Name does not exist');
     }
 });
-
-
 
 module.exports = router
