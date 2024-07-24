@@ -1,0 +1,45 @@
+version: '3'
+services:
+  product-service:
+    build:
+      context: ./microservices/product-services
+    ports:
+      - "3002:3002"
+    networks:
+      - my_network
+    volumes:
+      - ./microservices/product-services:/usr/src/app
+      - /usr/src/app/node_modules
+
+
+  order-service:
+    build:
+      context: ./microservices/order-services
+    ports:
+      - "3001:3001"
+    networks:
+      - my_network
+    volumes:
+      - ./microservices/order-services:/usr/src/app
+      - /usr/src/app/node_modules
+
+  api-gateway:
+    build:
+      context: .
+    depends_on:
+      - product-service
+      - order-service
+    networks:
+      - my_network
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ./api-gateway:/usr/src/app
+      - /usr/src/app/node_modules
+
+
+networks:
+  my_network:
+    driver: bridge

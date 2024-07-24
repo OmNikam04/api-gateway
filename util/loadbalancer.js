@@ -6,6 +6,7 @@ const loadbalancer = {};
 const MAX_RETRIES = 3;
 
 loadbalancer.ROUND_ROBIN = async (service) => {
+    console.log(`Loadbalancer ${service.index}`)
     const newIndex = ++service.index >= service.instances.length ? 0 : service.index;
     service.index = newIndex;
 
@@ -26,7 +27,7 @@ const checkHealth = async (instance) => {
             }
         } catch (error) {
             attempts++;
-            console.error(`Health check failed for ${instance.url + path}:`, error.message);
+            console.error(`Health check failed for ${instance.url + path} :`, error.message);
             if (attempts >= MAX_RETRIES) {
                 console.error(`Max retries reached for ${instance.url}. Marking as down.`);
                 return false; // Mark as down after maximum retries

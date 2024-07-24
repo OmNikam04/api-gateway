@@ -19,6 +19,44 @@
         }
       ],
       "loadBalancerStrategy": "ROUND_ROBIN"
+    },
+    "product-service": {
+      "index": 0,
+      "instances": [
+        {
+          "apiName": "product-service",
+          "protocol": "http",
+          "host": "product-service",
+          "port": 3002,
+          "weight": 1,
+          "connections": 0,
+          "url": "http://product-service:3002/",
+          "enabled": true,
+          "healthCheckPaths": [
+            "products"
+          ]
+        }
+      ],
+      "loadBalancerStrategy": "ROUND_ROBIN"
+    },
+    "order-service": {
+      "index": 2,
+      "instances": [
+        {
+          "apiName": "order-service",
+          "protocol": "http",
+          "host": "order-service",
+          "port": 3001,
+          "weight": 1,
+          "connections": 0,
+          "url": "http://order-service:3001/",
+          "enabled": true,
+          "healthCheckPaths": [
+            "orders"
+          ]
+        }
+      ],
+      "loadBalancerStrategy": "ROUND_ROBIN"
     }
   },
   "auth": {

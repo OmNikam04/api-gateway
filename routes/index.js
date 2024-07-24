@@ -141,8 +141,8 @@ router.all("/:apiName/:path(*)?", async (req, res) => {
             if (newIndex === -1) {
                 return res.status(500).send('No enabled instances available');
             }
-
             const url = service.instances[newIndex].url + (req.params.path ? req.params.path : "");
+            console.log(`url from ss: ${url}`)
             console.log(`Forwarding request to: ${url}`);
 
             const response = await axios({
