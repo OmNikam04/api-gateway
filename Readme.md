@@ -78,6 +78,6 @@ Use tools like Postman or Thunder Client to interact with the API Gateway. The g
 ### Health Checks and Load Balancing
 The API Gateway performs periodic health checks on each microservice and uses a round-robin strategy for load balancing.
 
-## Contributing <a id="contro"></a>
+## Contribution <a id="contro"></a>
 Contributions are welcome! Please open an issue or submit a pull request if you have any suggestions or improvements.
 
